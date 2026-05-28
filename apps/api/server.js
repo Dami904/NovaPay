@@ -128,31 +128,28 @@ app.post('/api/send-payment-emails', (req, res) => {
     return res.status(400).json({ error: 'recipients array required' })
   }
 
-  // Respond immediately so the payment flow is never blocked
-  res.json({ queued: recipients.filter(r => r.email).length })
+  const toEmail = recipients.filter(r => r.email)
 
-  for (const r of recipients) {
-    if (!r.email) continue
-
-    const html = buildEmailHtml({
-      recipientName: r.name,
-      amount: r.amount,
-      token: r.token,
-      address: r.address,
-      senderName,
-      explorerBaseUrl,
-      date,
-    })
-
-    getTransporter()
-      .sendMail({
+  await Promise.allSettled(
+    toEmail.map(r =>
+      getTransporter().sendMail({
         from: `"${senderName}" <${process.env.GMAIL_USER}>`,
         to: r.email,
         subject: `You've been paid — ${Number(r.amount).toLocaleString()} ${r.token} from ${senderName}`,
-        html,
-      })
-      .catch(err => console.error(`[email] failed to send to ${r.email}:`, err.message))
-  }
+        html: buildEmailHtml({
+          recipientName: r.name,
+          amount: r.amount,
+          token: r.token,
+          address: r.address,
+          senderName,
+          explorerBaseUrl,
+          date,
+        }),
+      }).catch(err => console.error(`[email] failed for ${r.email}:`, err.message))
+    )
+  )
+
+  res.json({ sent: toEmail.length })
 })
 
 app.listen(PORT, () => {

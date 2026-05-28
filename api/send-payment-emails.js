@@ -105,12 +105,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'recipients array required' })
   }
 
-  res.json({ queued: recipients.filter((r) => r.email).length })
+  const toEmail = recipients.filter((r) => r.email)
 
-  for (const r of recipients) {
-    if (!r.email) continue
-    getTransporter()
-      .sendMail({
+  await Promise.allSettled(
+    toEmail.map((r) =>
+      getTransporter().sendMail({
         from: `"${senderName}" <${process.env.GMAIL_USER}>`,
         to: r.email,
         subject: `You've been paid — ${Number(r.amount).toLocaleString()} ${r.token} from ${senderName}`,
@@ -123,7 +122,9 @@ export default async function handler(req, res) {
           explorerBaseUrl,
           date,
         }),
-      })
-      .catch((err) => console.error(`[email] failed for ${r.email}:`, err.message))
-  }
+      }).catch((err) => console.error(`[email] failed for ${r.email}:`, err.message))
+    )
+  )
+
+  res.json({ sent: toEmail.length })
 }
