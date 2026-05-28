@@ -164,6 +164,7 @@ export default function PayrollHistory() {
                       <tr>
                         <th>Name</th>
                         <th>Wallet Address</th>
+                        {run.recipients.some((r) => r.email) && <th>Email</th>}
                         <th>Amount (USDC)</th>
                       </tr>
                     </thead>
@@ -174,6 +175,11 @@ export default function PayrollHistory() {
                           <td className="td-addr">
                             <span className="addr-text">{r.address}</span>
                           </td>
+                          {run.recipients.some((rec) => rec.email) && (
+                            <td style={{ fontSize: '13px', color: r.email ? undefined : 'var(--text-muted, #9ca3af)' }}>
+                              {r.email || '—'}
+                            </td>
+                          )}
                           <td className="td-amount">${r.amount?.toLocaleString()}</td>
                         </tr>
                       ))}
