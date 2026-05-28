@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { ethers } from 'ethers'
 import {
   NOVAPAY_CONTRACT_ADDRESS,
@@ -7,12 +7,23 @@ import {
   ERC20_ABI,
   MORPH_TESTNET,
 } from '../utils/contractABI'
+import {
+  notifyBatchSubmitted,
+  notifyBatchExecuted,
+  notifyBatchFailed,
+} from '../utils/notifications'
 
 const Web3Context = createContext(null)
 
 const STORAGE_KEY = 'novapay_history'
 const DEMO_STORAGE_KEY = 'novapay_demo_mode'
+const SETTINGS_KEY = 'novapay_settings'
 const IS_ZERO_CONTRACT = NOVAPAY_CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000'
+
+// For local dev, set VITE_API_URL=http://localhost:3001 in your root .env
+const EMAIL_API_URL = import.meta.env.VITE_API_URL ?? ''
+
+const DEFAULT_SETTINGS = { discordWebhookUrl: '', orgName: 'NovaPay' }
 
 const MOCK_HISTORY = [
   {
@@ -25,11 +36,11 @@ const MOCK_HISTORY = [
     txHash: '0xabc123def456789000000000000000000000000000000000000000000000001',
     explorerUrl: 'https://explorer-hoodi.morphl2.io/tx/0xabc123',
     recipients: [
-      { address: '0x1234567890123456789012345678901234567890', name: 'Alice Chen', amount: 3000 },
-      { address: '0x2345678901234567890123456789012345678901', name: 'Bob Smith', amount: 2500 },
-      { address: '0x3456789012345678901234567890123456789012', name: 'Carol Diaz', amount: 2500 },
-      { address: '0x4567890123456789012345678901234567890123', name: 'David Kim', amount: 2500 },
-      { address: '0x5678901234567890123456789012345678901234', name: 'Eve Okafor', amount: 2000 },
+      { address: '0x1234567890123456789012345678901234567890', name: 'Alice Chen', amount: 3000, email: '' },
+      { address: '0x2345678901234567890123456789012345678901', name: 'Bob Smith', amount: 2500, email: '' },
+      { address: '0x3456789012345678901234567890123456789012', name: 'Carol Diaz', amount: 2500, email: '' },
+      { address: '0x4567890123456789012345678901234567890123', name: 'David Kim', amount: 2500, email: '' },
+      { address: '0x5678901234567890123456789012345678901234', name: 'Eve Okafor', amount: 2000, email: '' },
     ],
   },
   {
@@ -42,8 +53,8 @@ const MOCK_HISTORY = [
     txHash: '0xdef456abc789000000000000000000000000000000000000000000000000002',
     explorerUrl: 'https://explorer-hoodi.morphl2.io/tx/0xdef456',
     recipients: [
-      { address: '0x6789012345678901234567890123456789012345', name: 'Frank Torres', amount: 2000 },
-      { address: '0x7890123456789012345678901234567890123456', name: 'Grace Liu', amount: 2000 },
+      { address: '0x6789012345678901234567890123456789012345', name: 'Frank Torres', amount: 2000, email: '' },
+      { address: '0x7890123456789012345678901234567890123456', name: 'Grace Liu', amount: 2000, email: '' },
     ],
   },
 ]
@@ -71,6 +82,26 @@ export function Web3Provider({ children }) {
     }
   })
   const [networkError, setNetworkError] = useState(null)
+  const [settings, setSettings] = useState(() => {
+    try {
+      const stored = localStorage.getItem(SETTINGS_KEY)
+      return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS
+    } catch {
+      return DEFAULT_SETTINGS
+    }
+  })
+
+  // Ref so sendPayroll can read latest settings without being recreated on every change
+  const settingsRef = useRef(settings)
+  useEffect(() => { settingsRef.current = settings }, [settings])
+
+  const updateSettings = useCallback((updates) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...updates }
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(next))
+      return next
+    })
+  }, [])
 
   const toggleDemoMode = useCallback(() => {
     setDemoMode((prev) => {
@@ -143,10 +174,21 @@ export function Web3Provider({ children }) {
 
   const sendPayroll = useCallback(
     async ({ recipients, amounts, label, rows }) => {
+      const { discordWebhookUrl, orgName } = settingsRef.current
+      const totalAmount = amounts.reduce((s, a) => s + a, 0)
+      const explorerBase = MORPH_TESTNET.blockExplorerUrls[0]
+
+      const buildRecipients = (addrs) =>
+        addrs.map((addr, i) => ({
+          address: addr,
+          name: rows?.[i]?.name || `Recipient ${i + 1}`,
+          amount: amounts[i],
+          email: rows?.[i]?.email || '',
+        }))
+
       if (demoMode) {
         await new Promise((r) => setTimeout(r, 2500))
         const mockTx = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`
-        const totalAmount = amounts.reduce((s, a) => s + a, 0)
         const batch = {
           id: Date.now().toString(),
           label,
@@ -155,14 +197,23 @@ export function Web3Provider({ children }) {
           recipientCount: recipients.length,
           totalAmount,
           txHash: mockTx,
-          explorerUrl: `https://explorer-hoodi.morphl2.io/tx/${mockTx}`,
-          recipients: recipients.map((addr, i) => ({ address: addr, name: rows?.[i]?.name || `Recipient ${i + 1}`, amount: amounts[i] })),
+          explorerUrl: `${explorerBase}/tx/${mockTx}`,
+          recipients: buildRecipients(recipients),
         }
         setHistory((prev) => {
           const updated = [batch, ...prev]
           const nonMock = updated.filter((h) => !h.id.startsWith('mock-'))
           localStorage.setItem(STORAGE_KEY, JSON.stringify(nonMock))
           return updated
+        })
+        notifyBatchExecuted(discordWebhookUrl, {
+          label,
+          totalAmount,
+          token: selectedToken,
+          txHash: mockTx,
+          explorerUrl: batch.explorerUrl,
+          recipients: batch.recipients,
+          orgName,
         })
         return { txHash: mockTx, explorerUrl: batch.explorerUrl }
       }
@@ -175,35 +226,80 @@ export function Web3Provider({ children }) {
       const contract = new ethers.Contract(NOVAPAY_CONTRACT_ADDRESS, NOVAPAY_ABI, signer)
       const tokenContract = new ethers.Contract(tokenCfg.address, ERC20_ABI, signer)
 
-      const totalWei = amounts.reduce((s, a) => s + ethers.parseUnits(a.toString(), tokenCfg.decimals), BigInt(0))
-      const approveTx = await tokenContract.approve(NOVAPAY_CONTRACT_ADDRESS, totalWei)
-      await approveTx.wait()
+      try {
+        const totalWei = amounts.reduce((s, a) => s + ethers.parseUnits(a.toString(), tokenCfg.decimals), BigInt(0))
+        const approveTx = await tokenContract.approve(NOVAPAY_CONTRACT_ADDRESS, totalWei)
+        await approveTx.wait()
 
-      const amountsWei = amounts.map((a) => ethers.parseUnits(a.toString(), tokenCfg.decimals))
-      const tx = await contract.batchPayout(tokenCfg.address, recipients, amountsWei, label)
-      const receipt = await tx.wait()
+        // Notify Discord that the batch is now being submitted on-chain
+        notifyBatchSubmitted(discordWebhookUrl, {
+          label,
+          totalAmount,
+          token: selectedToken,
+          triggerAddress: account,
+          orgName,
+        })
 
-      const totalAmount = amounts.reduce((s, a) => s + a, 0)
-      const batch = {
-        id: receipt.hash,
-        label,
-        token: selectedToken,
-        timestamp: Date.now(),
-        recipientCount: recipients.length,
-        totalAmount,
-        txHash: receipt.hash,
-        explorerUrl: `${MORPH_TESTNET.blockExplorerUrls[0]}/tx/${receipt.hash}`,
-        recipients: recipients.map((addr, i) => ({ address: addr, name: rows?.[i]?.name || `Recipient ${i + 1}`, amount: amounts[i] })),
+        const amountsWei = amounts.map((a) => ethers.parseUnits(a.toString(), tokenCfg.decimals))
+        const tx = await contract.batchPayout(tokenCfg.address, recipients, amountsWei, label)
+        const receipt = await tx.wait()
+
+        const batch = {
+          id: receipt.hash,
+          label,
+          token: selectedToken,
+          timestamp: Date.now(),
+          recipientCount: recipients.length,
+          totalAmount,
+          txHash: receipt.hash,
+          explorerUrl: `${explorerBase}/tx/${receipt.hash}`,
+          recipients: buildRecipients(recipients),
+        }
+
+        setHistory((prev) => {
+          const updated = [batch, ...prev]
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+          return updated
+        })
+
+        // Discord: batch executed
+        notifyBatchExecuted(discordWebhookUrl, {
+          label,
+          totalAmount,
+          token: selectedToken,
+          txHash: receipt.hash,
+          explorerUrl: batch.explorerUrl,
+          recipients: batch.recipients,
+          orgName,
+        })
+
+        // Email notifications — fire-and-forget, never blocks confirmation flow
+        const emailRecipients = batch.recipients.filter((r) => r.email)
+        if (emailRecipients.length > 0) {
+          fetch(`${EMAIL_API_URL}/api/send-payment-emails`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipients: emailRecipients.map((r) => ({
+                email: r.email,
+                name: r.name,
+                address: r.address,
+                amount: r.amount,
+                token: selectedToken,
+              })),
+              explorerBaseUrl: explorerBase,
+              date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+              senderName: orgName,
+            }),
+          }).catch((err) => console.error('[email] notification failed:', err.message))
+        }
+
+        await fetchTokenBalance(account, provider, selectedToken)
+        return { txHash: receipt.hash, explorerUrl: batch.explorerUrl }
+      } catch (err) {
+        notifyBatchFailed(discordWebhookUrl, { label, orgName })
+        throw err
       }
-
-      setHistory((prev) => {
-        const updated = [batch, ...prev]
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-        return updated
-      })
-
-      await fetchTokenBalance(account, provider, selectedToken)
-      return { txHash: receipt.hash, explorerUrl: batch.explorerUrl }
     },
     [signer, account, provider, fetchTokenBalance, demoMode, selectedToken]
   )
@@ -239,7 +335,14 @@ export function Web3Provider({ children }) {
 
   return (
     <Web3Context.Provider
-      value={{ account, provider, signer, isCorrectNetwork, tokenBalance, selectedToken, setSelectedToken, history, networkError, stats, demoMode, toggleDemoMode, connect, disconnect, switchToMorph, sendPayroll }}
+      value={{
+        account, provider, signer, isCorrectNetwork, tokenBalance,
+        selectedToken, setSelectedToken,
+        history, networkError, stats,
+        demoMode, toggleDemoMode,
+        settings, updateSettings,
+        connect, disconnect, switchToMorph, sendPayroll,
+      }}
     >
       {children}
     </Web3Context.Provider>

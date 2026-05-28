@@ -9,6 +9,7 @@ function normalizeHeader(h) {
 const WALLET_ALIASES = ['wallet_address', 'address', 'wallet']
 const AMOUNT_ALIASES = ['amount', 'usdc_amount', 'usdc']
 const NAME_ALIASES   = ['name', 'employee_name', 'employee']
+const EMAIL_ALIASES  = ['email', 'email_address', 'recipient_email']
 
 function findAlias(headers, aliases) {
   return aliases.find((a) => headers.includes(a)) || ''
@@ -47,6 +48,7 @@ function validateRows(rawRows) {
   let walletKey = findAlias(headers, WALLET_ALIASES)
   let amountKey = findAlias(headers, AMOUNT_ALIASES)
   let nameKey   = findAlias(headers, NAME_ALIASES)
+  const emailKey = findAlias(headers, EMAIL_ALIASES)
 
   if (!walletKey || !amountKey) {
     const inferred = inferColumns(headers, rawRows)
@@ -60,6 +62,7 @@ function validateRows(rawRows) {
     const address  = String(row[walletKey] ?? '').trim()
     const amountRaw = String(row[amountKey] ?? '').trim()
     const name     = String(row[nameKey]   ?? '').trim()
+    const email    = String(row[emailKey]  ?? '').trim()
 
     if (!address) {
       errors.push({ line: lineNum, field: 'wallet_address', message: 'Add a wallet address for this row.' })
@@ -78,6 +81,7 @@ function validateRows(rawRows) {
       line: lineNum,
       address: address || '',
       name: name || `Recipient ${i + 1}`,
+      email,
       amount: isNaN(amount) ? 0 : amount,
       amountRaw,
       hasError: !address || !ethers.isAddress(address) || isNaN(amount) || amount <= 0,

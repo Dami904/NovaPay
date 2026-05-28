@@ -6,15 +6,15 @@ import { parsePayrollCSV } from '../utils/csvParser'
 import { getFriendlyErrorMessage } from '../utils/userMessages'
 
 const SAMPLE_ROWS = [
-  { wallet_address: '0x1234567890123456789012345678901234567890', name: 'Alice Chen', amount: 3000 },
-  { wallet_address: '0x2345678901234567890123456789012345678901', name: 'Bob Smith', amount: 2500 },
-  { wallet_address: '0x3456789012345678901234567890123456789012', name: 'Carol Diaz', amount: 2500 },
+  { wallet_address: '0x1234567890123456789012345678901234567890', name: 'Alice Chen', email: 'alice@example.com', amount: 3000 },
+  { wallet_address: '0x2345678901234567890123456789012345678901', name: 'Bob Smith', email: 'bob@example.com', amount: 2500 },
+  { wallet_address: '0x3456789012345678901234567890123456789012', name: 'Carol Diaz', email: '', amount: 2500 },
 ]
 
-const SAMPLE_CSV = `wallet_address,name,amount
-0x1234567890123456789012345678901234567890,Alice Chen,3000
-0x2345678901234567890123456789012345678901,Bob Smith,2500
-0x3456789012345678901234567890123456789012,Carol Diaz,2500`
+const SAMPLE_CSV = `wallet_address,name,email,amount
+0x1234567890123456789012345678901234567890,Alice Chen,alice@example.com,3000
+0x2345678901234567890123456789012345678901,Bob Smith,bob@example.com,2500
+0x3456789012345678901234567890123456789012,Carol Diaz,,2500`
 
 export default function NewPayrollRun() {
   const { sendPayroll, tokenBalance, selectedToken, setSelectedToken } = useWeb3()
@@ -92,6 +92,7 @@ export default function NewPayrollRun() {
   const totalAmount = validRows.reduce((s, r) => s + r.amount, 0)
   const hasBalance = parseFloat(tokenBalance) >= totalAmount
   const canSend = validRows.length > 0 && label.trim() && errors.length === 0 && !sending
+  const hasEmails = rows.some((r) => r.email)
 
   async function handleSend() {
     if (!canSend) return
@@ -190,7 +191,7 @@ export default function NewPayrollRun() {
                   <span className="dropzone-icon">⬆</span>
                   <div className="dropzone-text">Drop your CSV or Excel file here or click to browse</div>
                   <div className="dropzone-hint">
-                    Your file should include a wallet address and an amount for each person. You can also add names.
+                    Your file should include a wallet address and an amount for each person. You can also add names and emails (optional — used for payment notifications).
                   </div>
                 </div>
               )}
@@ -222,6 +223,7 @@ export default function NewPayrollRun() {
                       <th>#</th>
                       <th>Name</th>
                       <th>Wallet Address</th>
+                      {hasEmails && <th>Email</th>}
                       <th>Amount (USDC)</th>
                       <th>Status</th>
                     </tr>
@@ -234,6 +236,11 @@ export default function NewPayrollRun() {
                         <td className="td-addr">
                           <span className="addr-text">{row.address || '—'}</span>
                         </td>
+                        {hasEmails && (
+                          <td style={{ fontSize: '13px', color: row.email ? undefined : 'var(--text-muted, #9ca3af)' }}>
+                            {row.email || '—'}
+                          </td>
+                        )}
                         <td className="td-amount">
                           {row.amount > 0 ? `$${row.amount.toLocaleString()}` : <span className="text-error">{row.amountRaw || '—'}</span>}
                         </td>

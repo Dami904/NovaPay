@@ -47,8 +47,8 @@ export default function ConnectWallet() {
             <span className="hero-logo-text">NovaPay</span>
           </div>
           <h1 className="hero-headline">
-            Web3 Payroll That<br />
-            <span className="gradient-text">Actually Makes Sense.</span>
+            Web3 Payroll for<br />
+            <span className="gradient-text">Teams That Move Fast.</span>
           </h1>
           <p className="hero-sub">
             Send group payments, keep a record with each run, and export everything for review.
