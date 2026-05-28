@@ -30,6 +30,8 @@ export default function ConnectWallet() {
     { icon: '⚡', label: 'One-Click Payout', desc: 'Pay everyone in a single transfer' },
     { icon: '🏷', label: 'Saved With Each Run', desc: 'Every payout keeps its label for later review' },
     { icon: '📊', label: 'Export Record', desc: 'Download a spreadsheet for your records' },
+    { icon: '💬', label: 'Discord Notifications', desc: 'Get real-time alerts in your Discord channel when a batch is sent or confirmed' },
+    { icon: '✉', label: 'Payment Emails', desc: 'Each recipient gets a personalized payment slip sent straight to their inbox' },
   ]
 
   return (

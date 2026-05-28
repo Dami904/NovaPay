@@ -6,10 +6,25 @@ function normalizeHeader(h) {
   return h.trim().toLowerCase().replace(/\s+/g, '_')
 }
 
-const WALLET_ALIASES = ['wallet_address', 'address', 'wallet']
-const AMOUNT_ALIASES = ['amount', 'usdc_amount', 'usdc']
-const NAME_ALIASES   = ['name', 'employee_name', 'employee']
-const EMAIL_ALIASES  = ['email', 'email_address', 'recipient_email']
+const WALLET_ALIASES = [
+  'wallet_address', 'address', 'wallet', 'wallet_addr', 'eth_address',
+  'ethereum_address', 'recipient_address', 'recipient_wallet', 'to_address',
+  'to', 'public_address', 'account', 'account_address',
+]
+const AMOUNT_ALIASES = [
+  'amount', 'usdc_amount', 'usdc', 'usdt_amount', 'usdt', 'payment',
+  'payment_amount', 'pay_amount', 'payout', 'payout_amount', 'value',
+  'transfer_amount', 'salary', 'fee', 'total',
+]
+const NAME_ALIASES = [
+  'name', 'employee_name', 'employee', 'full_name', 'recipient_name',
+  'recipient', 'payee', 'payee_name', 'person', 'display_name',
+  'contact_name', 'staff_name', 'contractor_name', 'beneficiary',
+]
+const EMAIL_ALIASES = [
+  'email', 'email_address', 'recipient_email', 'employee_email',
+  'contact_email', 'mail', 'e_mail', 'payee_email',
+]
 
 function findAlias(headers, aliases) {
   return aliases.find((a) => headers.includes(a)) || ''
