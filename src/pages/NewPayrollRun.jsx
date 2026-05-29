@@ -33,6 +33,7 @@ export default function NewPayrollRun() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [newRow, setNewRow] = useState(EMPTY_FORM)
   const [addError, setAddError] = useState('')
+  const [recipientSearch, setRecipientSearch] = useState('')
   const fileInputRef = useRef()
 
   const processFile = useCallback(async (file) => {
@@ -120,6 +121,14 @@ export default function NewPayrollRun() {
   const canSend = validRows.length > 0 && label.trim() && errors.length === 0 && !sending
   const hasEmails = rows.some((r) => r.email)
 
+  const searchTerm = recipientSearch.toLowerCase()
+  const visibleRows = rows.map((r, i) => ({ ...r, _idx: i })).filter((r) =>
+    !searchTerm ||
+    r.name.toLowerCase().includes(searchTerm) ||
+    r.email.toLowerCase().includes(searchTerm) ||
+    r.address.toLowerCase().includes(searchTerm)
+  )
+
   async function handleSend() {
     if (!canSend) return
     setSendError('')
@@ -147,45 +156,43 @@ export default function NewPayrollRun() {
     }
   }
 
+  const fieldLabel = (text) => (
+    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent, #818cf8)', marginBottom: 6 }}>{text}</div>
+  )
+
   const AddRecipientForm = (
-    <div style={{ marginTop: 16, padding: '16px', background: 'var(--bg-card, #1e293b)', borderRadius: 8, border: '1px solid var(--border, #334155)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr 1fr', gap: 8, marginBottom: addError ? 8 : 12 }}>
-        <input
-          className="label-input"
-          placeholder="Wallet address (0x…)"
-          value={newRow.address}
-          onChange={(e) => setNewRow((p) => ({ ...p, address: e.target.value }))}
-          style={{ fontSize: 13 }}
-        />
-        <input
-          className="label-input"
-          placeholder="Name (optional)"
-          value={newRow.name}
-          onChange={(e) => setNewRow((p) => ({ ...p, name: e.target.value }))}
-          style={{ fontSize: 13 }}
-        />
-        <input
-          className="label-input"
-          placeholder="Email (optional)"
-          type="email"
-          value={newRow.email}
-          onChange={(e) => setNewRow((p) => ({ ...p, email: e.target.value }))}
-          style={{ fontSize: 13 }}
-        />
-        <input
-          className="label-input"
-          placeholder="Amount"
-          type="number"
-          min="0"
-          value={newRow.amount}
-          onChange={(e) => setNewRow((p) => ({ ...p, amount: e.target.value }))}
-          style={{ fontSize: 13 }}
-        />
+    <div style={{ marginTop: 16, padding: '24px', background: 'var(--bg-card, #1e293b)', borderRadius: 10, border: '1px solid var(--border, #334155)' }}>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>New Recipient</div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div>
+          {fieldLabel('Full name')}
+          <input className="label-input" placeholder="Alice Chen" value={newRow.name} onChange={(e) => setNewRow((p) => ({ ...p, name: e.target.value }))} />
+        </div>
+        <div>
+          {fieldLabel('Email (optional)')}
+          <input className="label-input" placeholder="alice@company.com" type="email" value={newRow.email} onChange={(e) => setNewRow((p) => ({ ...p, email: e.target.value }))} />
+        </div>
       </div>
-      {addError && <div className="error-box" style={{ marginBottom: 10, padding: '8px 12px', fontSize: 13 }}>⚠ {addError}</div>}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button className="btn-ghost btn-sm" onClick={() => { setShowAddForm(false); setNewRow(EMPTY_FORM); setAddError('') }}>Cancel</button>
-        <button className="btn-primary btn-sm" onClick={addManualRow}>Add Recipient</button>
+
+      <div style={{ marginBottom: 16 }}>
+        {fieldLabel('Wallet address')}
+        <input className="label-input" placeholder="0x…" value={newRow.address} onChange={(e) => setNewRow((p) => ({ ...p, address: e.target.value }))} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        <div>
+          {fieldLabel(`Amount (${selectedToken})`)}
+          <input className="label-input" placeholder="0.00" type="number" min="0" value={newRow.amount} onChange={(e) => setNewRow((p) => ({ ...p, amount: e.target.value }))} />
+        </div>
+        <div />
+      </div>
+
+      {addError && <div className="error-box" style={{ marginBottom: 14, padding: '8px 12px', fontSize: 13 }}>⚠ {addError}</div>}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn-primary" onClick={addManualRow}>Add Recipient</button>
+        <button className="btn-ghost" onClick={() => { setShowAddForm(false); setNewRow(EMPTY_FORM); setAddError('') }}>Cancel</button>
       </div>
     </div>
   )
@@ -245,19 +252,11 @@ export default function NewPayrollRun() {
               )}
             </div>
 
-            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ flex: 1, height: 1, background: 'var(--border, #334155)' }} />
-              <span style={{ fontSize: 12, color: 'var(--text-muted, #9ca3af)', whiteSpace: 'nowrap' }}>or add manually</span>
-              <div style={{ flex: 1, height: 1, background: 'var(--border, #334155)' }} />
-            </div>
-
-            <div style={{ marginTop: 12 }}>
-              {!showAddForm ? (
-                <button className="btn-ghost btn-sm" style={{ width: '100%' }} onClick={() => setShowAddForm(true)}>
-                  + Add recipient manually
-                </button>
-              ) : AddRecipientForm}
-            </div>
+            {!showAddForm ? (
+              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                <button className="btn-primary" onClick={() => setShowAddForm(true)}>+ Add Recipient</button>
+              </div>
+            ) : AddRecipientForm}
           </div>
 
           {rows.length > 0 && (
@@ -266,6 +265,14 @@ export default function NewPayrollRun() {
                 <h2 className="card-title">Step 2 — Review Recipients</h2>
                 <span className="badge-count">{validRows.length} valid · {errors.length} errors</span>
               </div>
+
+              <input
+                className="filter-input"
+                placeholder="Search by name, email, wallet…"
+                value={recipientSearch}
+                onChange={(e) => setRecipientSearch(e.target.value)}
+                style={{ width: '100%', marginBottom: 12, boxSizing: 'border-box' }}
+              />
 
               {errors.length > 0 && (
                 <div className="error-banner">
@@ -290,9 +297,9 @@ export default function NewPayrollRun() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row, i) => (
-                      <tr key={i} className={row.hasError ? 'row-error' : ''}>
-                        <td className="td-num">{i + 1}</td>
+                    {visibleRows.map((row) => (
+                      <tr key={row._idx} className={row.hasError ? 'row-error' : ''}>
+                        <td className="td-num">{row._idx + 1}</td>
                         <td>{row.name}</td>
                         <td className="td-addr"><span className="addr-text">{row.address || '—'}</span></td>
                         {hasEmails && (
@@ -310,7 +317,7 @@ export default function NewPayrollRun() {
                         </td>
                         <td>
                           <button
-                            onClick={() => deleteRow(i)}
+                            onClick={() => deleteRow(row._idx)}
                             title="Remove recipient"
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #9ca3af)', fontSize: 14, padding: '2px 6px', borderRadius: 4 }}
                             onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
@@ -323,12 +330,6 @@ export default function NewPayrollRun() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-
-              <div style={{ marginTop: 12 }}>
-                {!showAddForm ? (
-                  <button className="btn-ghost btn-sm" onClick={() => setShowAddForm(true)}>+ Add recipient</button>
-                ) : AddRecipientForm}
               </div>
 
               <div className="total-row">
