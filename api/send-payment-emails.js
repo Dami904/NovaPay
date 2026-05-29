@@ -22,13 +22,13 @@ function buildEmailHtml({ recipientName, amount, token, address, senderName, exp
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);max-width:560px;">
         <tr>
           <td style="background:#0f172a;padding:28px 40px;">
-            <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px;">&#10022; ${senderName}</span>
+            <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px;">&#10022; NovaPay</span>
           </td>
         </tr>
         <tr>
           <td style="padding:36px 40px 0;">
             <p style="margin:0;font-size:16px;color:#374151;">Hi ${firstName},</p>
-            <p style="margin:12px 0 0;font-size:16px;color:#374151;line-height:1.6;">A payment has been sent to your wallet. Here are the details:</p>
+            <p style="margin:12px 0 0;font-size:16px;color:#374151;line-height:1.6;">A payment has been sent to your wallet by <strong>${senderName}</strong>. Here are the details:</p>
           </td>
         </tr>
         <tr>
@@ -69,7 +69,7 @@ function buildEmailHtml({ recipientName, amount, token, address, senderName, exp
         <tr>
           <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;">
             <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.6;">
-              This payment was sent via ${senderName}. You received this email because your wallet address was included in a payment batch.
+              This payment was sent by <strong>${senderName}</strong> via NovaPay. You received this notification because your wallet address was included in a payment batch. If you have questions, contact the sender directly.
             </p>
           </td>
         </tr>
@@ -95,11 +95,14 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    return res.status(503).json({ error: 'Email service not configured' })
-  }
+  const { recipients, explorerBaseUrl, date, senderName = 'NovaPay', gmailUser: customUser, gmailAppPassword: customPass } = req.body
 
-  const { recipients, explorerBaseUrl, date, senderName = 'NovaPay' } = req.body
+  const emailUser = customUser || process.env.GMAIL_USER
+  const emailPass = customPass || process.env.GMAIL_APP_PASSWORD
+
+  if (!emailUser || !emailPass) {
+    return res.status(503).json({ error: 'Email service not configured — add Gmail credentials in Settings or Vercel env vars' })
+  }
 
   if (!Array.isArray(recipients) || recipients.length === 0) {
     return res.status(400).json({ error: 'recipients array required' })
@@ -107,10 +110,15 @@ export default async function handler(req, res) {
 
   const toEmail = recipients.filter((r) => r.email)
 
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: emailUser, pass: emailPass },
+  })
+
   await Promise.allSettled(
     toEmail.map((r) =>
-      getTransporter().sendMail({
-        from: `"${senderName}" <${process.env.GMAIL_USER}>`,
+      transporter.sendMail({
+        from: `"NovaPay" <${emailUser}>`,
         to: r.email,
         subject: `You've been paid — ${Number(r.amount).toLocaleString()} ${r.token} from ${senderName}`,
         html: buildEmailHtml({

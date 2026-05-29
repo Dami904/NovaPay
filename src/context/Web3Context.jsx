@@ -21,7 +21,7 @@ const IS_ZERO_CONTRACT = NOVAPAY_CONTRACT_ADDRESS === '0x00000000000000000000000
 
 const EMAIL_API_URL = import.meta.env.VITE_API_URL ?? ''
 
-const DEFAULT_SETTINGS = { discordWebhookUrl: '', orgName: 'NovaPay' }
+const DEFAULT_SETTINGS = { discordWebhookUrl: '', orgName: 'NovaPay', gmailUser: '', gmailAppPassword: '' }
 
 export function Web3Provider({ children }) {
   const [account, setAccount] = useState(null)
@@ -168,6 +168,7 @@ export function Web3Provider({ children }) {
 
         const emailRecipients = batch.recipients.filter((r) => r.email)
         if (emailRecipients.length > 0) {
+          const { gmailUser, gmailAppPassword } = settingsRef.current
           fetch(`${EMAIL_API_URL}/api/send-payment-emails`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -179,6 +180,7 @@ export function Web3Provider({ children }) {
               explorerBaseUrl: explorerBase,
               date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
               senderName: orgName,
+              ...(gmailUser && gmailAppPassword ? { gmailUser, gmailAppPassword } : {}),
             }),
           }).catch((err) => console.error('[email] notification failed:', err.message))
         }

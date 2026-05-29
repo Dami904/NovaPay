@@ -33,7 +33,7 @@ function buildEmailHtml({ recipientName, amount, token, address, senderName, exp
 
         <tr>
           <td style="background:#0f172a;padding:28px 40px;">
-            <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px;">&#10022; ${senderName}</span>
+            <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px;">&#10022; NovaPay</span>
           </td>
         </tr>
 
@@ -41,7 +41,7 @@ function buildEmailHtml({ recipientName, amount, token, address, senderName, exp
           <td style="padding:36px 40px 0;">
             <p style="margin:0;font-size:16px;color:#374151;">Hi ${firstName},</p>
             <p style="margin:12px 0 0;font-size:16px;color:#374151;line-height:1.6;">
-              A payment has been sent to your wallet. Here are the details:
+              A payment has been sent to your wallet by <strong>${senderName}</strong>. Here are the details:
             </p>
           </td>
         </tr>
@@ -89,8 +89,7 @@ function buildEmailHtml({ recipientName, amount, token, address, senderName, exp
         <tr>
           <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;">
             <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.6;">
-              This payment was sent via ${senderName}. You received this email because your wallet address
-              was included in a payment batch. If you did not expect this, you can safely ignore it.
+              This payment was sent by <strong>${senderName}</strong> via NovaPay. You received this notification because your wallet address was included in a payment batch. If you have questions, contact the sender directly.
             </p>
           </td>
         </tr>

@@ -9,20 +9,35 @@ function shortAddress(addr) {
 function SettingsModal({ settings, onSave, onClose }) {
   const [orgName, setOrgName] = useState(settings.orgName || 'NovaPay')
   const [webhookUrl, setWebhookUrl] = useState(settings.discordWebhookUrl || '')
+  const [gmailUser, setGmailUser] = useState(settings.gmailUser || '')
+  const [gmailAppPassword, setGmailAppPassword] = useState(settings.gmailAppPassword || '')
+  const [showPassword, setShowPassword] = useState(false)
 
   function handleSave() {
-    onSave({ orgName: orgName.trim() || 'NovaPay', discordWebhookUrl: webhookUrl.trim() })
+    onSave({
+      orgName: orgName.trim() || 'NovaPay',
+      discordWebhookUrl: webhookUrl.trim(),
+      gmailUser: gmailUser.trim(),
+      gmailAppPassword: gmailAppPassword.trim(),
+    })
     onClose()
   }
 
+  const label = (text) => (
+    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{text}</label>
+  )
+  const hint = (text) => (
+    <div className="label-hint" style={{ marginTop: 4 }}>{text}</div>
+  )
+
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowY: 'auto', padding: '24px 16px' }}
       onClick={onClose}
     >
       <div
         className="card"
-        style={{ width: '100%', maxWidth: 480, margin: '0 16px', padding: '28px 32px' }}
+        style={{ width: '100%', maxWidth: 520, margin: 'auto', padding: '28px 32px' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -31,37 +46,50 @@ function SettingsModal({ settings, onSave, onClose }) {
         </div>
 
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-            Organization Name
-          </label>
-          <input
-            className="label-input"
-            type="text"
-            value={orgName}
-            onChange={(e) => setOrgName(e.target.value)}
-            placeholder="NovaPay"
-            maxLength={80}
-          />
-          <div className="label-hint" style={{ marginTop: 4 }}>
-            Shown in payment emails and Discord notifications as the sender name.
-          </div>
+          {label('Organization Name')}
+          <input className="label-input" type="text" value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="NovaPay" maxLength={80} />
+          {hint('Shown in payment emails and Discord notifications as the sender name.')}
         </div>
 
-        <div style={{ marginBottom: 28 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-            Discord Webhook URL
-          </label>
-          <input
-            className="label-input"
-            type="url"
-            value={webhookUrl}
-            onChange={(e) => setWebhookUrl(e.target.value)}
-            placeholder="https://discord.com/api/webhooks/…"
-          />
-          <div className="label-hint" style={{ marginTop: 4 }}>
-            Paste your Discord channel webhook URL. Leave blank to disable notifications.
-            In Discord: channel settings → Integrations → Webhooks → New Webhook → Copy URL.
+        <div style={{ marginBottom: 20 }}>
+          {label('Discord Webhook URL')}
+          <input className="label-input" type="url" value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/…" />
+          {hint('In Discord: channel settings → Integrations → Webhooks → New Webhook → Copy URL. Leave blank to disable.')}
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border, #334155)', margin: '20px 0' }} />
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16 }}>Email Sender (optional)</div>
+
+        <div style={{ marginBottom: 16 }}>
+          {label('Gmail Address')}
+          <input className="label-input" type="email" value={gmailUser} onChange={(e) => setGmailUser(e.target.value)} placeholder="youraddress@gmail.com" />
+          {hint('The Gmail account payment emails will be sent from. Leave blank to use the default configured on the server.')}
+        </div>
+
+        <div style={{ marginBottom: 8 }}>
+          {label('Gmail App Password')}
+          <div style={{ position: 'relative' }}>
+            <input
+              className="label-input"
+              type={showPassword ? 'text' : 'password'}
+              value={gmailAppPassword}
+              onChange={(e) => setGmailAppPassword(e.target.value)}
+              placeholder="xxxx xxxx xxxx xxxx"
+              style={{ paddingRight: 60 }}
+            />
+            <button
+              onClick={() => setShowPassword((p) => !p)}
+              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted, #9ca3af)' }}
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
           </div>
+        </div>
+        <div className="label-hint" style={{ marginBottom: 20 }}>
+          16-character Google App Password. Requires Gmail 2-Step Verification to be enabled.{' '}
+          <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{ color: 'var(--accent, #818cf8)', textDecoration: 'underline' }}>
+            How to generate one →
+          </a>
         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
