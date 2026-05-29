@@ -16,54 +16,14 @@ import {
 const Web3Context = createContext(null)
 
 const STORAGE_KEY = 'novapay_history'
-const DEMO_STORAGE_KEY = 'novapay_demo_mode'
 const SETTINGS_KEY = 'novapay_settings'
 const IS_ZERO_CONTRACT = NOVAPAY_CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000'
 
-// For local dev, set VITE_API_URL=http://localhost:3001 in your root .env
 const EMAIL_API_URL = import.meta.env.VITE_API_URL ?? ''
 
 const DEFAULT_SETTINGS = { discordWebhookUrl: '', orgName: 'NovaPay' }
 
-const MOCK_HISTORY = [
-  {
-    id: 'mock-1',
-    label: 'Payroll - April 2026',
-    timestamp: new Date('2026-04-30').getTime(),
-    recipientCount: 5,
-    totalAmount: 12500,
-    token: 'USDC',
-    txHash: '0xabc123def456789000000000000000000000000000000000000000000000001',
-    explorerUrl: 'https://explorer-hoodi.morphl2.io/tx/0xabc123',
-    recipients: [
-      { address: '0x1234567890123456789012345678901234567890', name: 'Alice Chen', amount: 3000, email: '' },
-      { address: '0x2345678901234567890123456789012345678901', name: 'Bob Smith', amount: 2500, email: '' },
-      { address: '0x3456789012345678901234567890123456789012', name: 'Carol Diaz', amount: 2500, email: '' },
-      { address: '0x4567890123456789012345678901234567890123', name: 'David Kim', amount: 2500, email: '' },
-      { address: '0x5678901234567890123456789012345678901234', name: 'Eve Okafor', amount: 2000, email: '' },
-    ],
-  },
-  {
-    id: 'mock-2',
-    label: 'Contractor Payments - April 2026',
-    timestamp: new Date('2026-04-15').getTime(),
-    recipientCount: 2,
-    totalAmount: 4000,
-    token: 'USDC',
-    txHash: '0xdef456abc789000000000000000000000000000000000000000000000000002',
-    explorerUrl: 'https://explorer-hoodi.morphl2.io/tx/0xdef456',
-    recipients: [
-      { address: '0x6789012345678901234567890123456789012345', name: 'Frank Torres', amount: 2000, email: '' },
-      { address: '0x7890123456789012345678901234567890123456', name: 'Grace Liu', amount: 2000, email: '' },
-    ],
-  },
-]
-
 export function Web3Provider({ children }) {
-  const [demoMode, setDemoMode] = useState(() => {
-    const stored = localStorage.getItem(DEMO_STORAGE_KEY)
-    return stored !== null ? stored === 'true' : IS_ZERO_CONTRACT
-  })
   const [account, setAccount] = useState(null)
   const [provider, setProvider] = useState(null)
   const [signer, setSigner] = useState(null)
@@ -71,14 +31,11 @@ export function Web3Provider({ children }) {
   const [selectedToken, setSelectedToken] = useState('USDC')
   const [tokenBalance, setTokenBalance] = useState('0')
   const [history, setHistory] = useState(() => {
-    const storedMode = localStorage.getItem(DEMO_STORAGE_KEY)
-    const initDemo = storedMode !== null ? storedMode === 'true' : IS_ZERO_CONTRACT
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
-      const parsed = stored ? JSON.parse(stored) : []
-      return initDemo ? [...parsed, ...MOCK_HISTORY] : parsed
+      return stored ? JSON.parse(stored) : []
     } catch {
-      return initDemo ? MOCK_HISTORY : []
+      return []
     }
   })
   const [networkError, setNetworkError] = useState(null)
@@ -91,7 +48,6 @@ export function Web3Provider({ children }) {
     }
   })
 
-  // Ref so sendPayroll can read latest settings without being recreated on every change
   const settingsRef = useRef(settings)
   useEffect(() => { settingsRef.current = settings }, [settings])
 
@@ -99,23 +55,6 @@ export function Web3Provider({ children }) {
     setSettings((prev) => {
       const next = { ...prev, ...updates }
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(next))
-      return next
-    })
-  }, [])
-
-  const toggleDemoMode = useCallback(() => {
-    setDemoMode((prev) => {
-      const next = !prev
-      localStorage.setItem(DEMO_STORAGE_KEY, String(next))
-      if (next) {
-        setHistory((h) => {
-          const hasMock = h.some((item) => item.id.startsWith('mock-'))
-          return hasMock ? h : [...h, ...MOCK_HISTORY]
-        })
-        setTokenBalance('50000')
-      } else {
-        setHistory((h) => h.filter((item) => !item.id.startsWith('mock-')))
-      }
       return next
     })
   }, [])
@@ -130,7 +69,6 @@ export function Web3Provider({ children }) {
   }, [])
 
   const fetchTokenBalance = useCallback(async (addr, prov, tokenKey) => {
-    if (demoMode) { setTokenBalance('50000'); return }
     try {
       const cfg = TOKENS[tokenKey] || TOKENS.USDC
       const token = new ethers.Contract(cfg.address, ERC20_ABI, prov)
@@ -139,7 +77,7 @@ export function Web3Provider({ children }) {
     } catch {
       setTokenBalance('0')
     }
-  }, [demoMode])
+  }, [])
 
   const connect = useCallback(async () => {
     if (!window.ethereum) throw new Error('Please install a wallet app to continue.')
@@ -156,14 +94,11 @@ export function Web3Provider({ children }) {
     if (correct) await fetchTokenBalance(accounts[0], prov, selectedToken)
   }, [checkNetwork, fetchTokenBalance, selectedToken])
 
-  // Re-fetch (or mock) balance whenever token, demo mode, or connection state changes
   useEffect(() => {
-    if (demoMode) {
-      setTokenBalance('50000')
-    } else if (account && provider && isCorrectNetwork) {
+    if (account && provider && isCorrectNetwork) {
       fetchTokenBalance(account, provider, selectedToken)
     }
-  }, [selectedToken, demoMode, account, isCorrectNetwork]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedToken, account, isCorrectNetwork]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const switchToMorph = useCallback(async () => {
     await window.ethereum.request({
@@ -174,6 +109,10 @@ export function Web3Provider({ children }) {
 
   const sendPayroll = useCallback(
     async ({ recipients, amounts, label, rows }) => {
+      if (IS_ZERO_CONTRACT) {
+        throw new Error('Contract not deployed yet.')
+      }
+
       const { discordWebhookUrl, orgName } = settingsRef.current
       const totalAmount = amounts.reduce((s, a) => s + a, 0)
       const explorerBase = MORPH_TESTNET.blockExplorerUrls[0]
@@ -186,42 +125,6 @@ export function Web3Provider({ children }) {
           email: rows?.[i]?.email || '',
         }))
 
-      if (demoMode) {
-        await new Promise((r) => setTimeout(r, 2500))
-        const mockTx = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`
-        const batch = {
-          id: Date.now().toString(),
-          label,
-          token: selectedToken,
-          timestamp: Date.now(),
-          recipientCount: recipients.length,
-          totalAmount,
-          txHash: mockTx,
-          explorerUrl: `${explorerBase}/tx/${mockTx}`,
-          recipients: buildRecipients(recipients),
-        }
-        setHistory((prev) => {
-          const updated = [batch, ...prev]
-          const nonMock = updated.filter((h) => !h.id.startsWith('mock-'))
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(nonMock))
-          return updated
-        })
-        notifyBatchExecuted(discordWebhookUrl, {
-          label,
-          totalAmount,
-          token: selectedToken,
-          txHash: mockTx,
-          explorerUrl: batch.explorerUrl,
-          recipients: batch.recipients,
-          orgName,
-        })
-        return { txHash: mockTx, explorerUrl: batch.explorerUrl }
-      }
-
-      if (IS_ZERO_CONTRACT) {
-        throw new Error("This feature isn't ready yet. Try Demo mode to explore the app.")
-      }
-
       const tokenCfg = TOKENS[selectedToken]
       const contract = new ethers.Contract(NOVAPAY_CONTRACT_ADDRESS, NOVAPAY_ABI, signer)
       const tokenContract = new ethers.Contract(tokenCfg.address, ERC20_ABI, signer)
@@ -231,13 +134,8 @@ export function Web3Provider({ children }) {
         const approveTx = await tokenContract.approve(NOVAPAY_CONTRACT_ADDRESS, totalWei)
         await approveTx.wait()
 
-        // Notify Discord that the batch is now being submitted on-chain
         notifyBatchSubmitted(discordWebhookUrl, {
-          label,
-          totalAmount,
-          token: selectedToken,
-          triggerAddress: account,
-          orgName,
+          label, totalAmount, token: selectedToken, triggerAddress: account, orgName,
         })
 
         const amountsWei = amounts.map((a) => ethers.parseUnits(a.toString(), tokenCfg.decimals))
@@ -262,18 +160,12 @@ export function Web3Provider({ children }) {
           return updated
         })
 
-        // Discord: batch executed
         notifyBatchExecuted(discordWebhookUrl, {
-          label,
-          totalAmount,
-          token: selectedToken,
-          txHash: receipt.hash,
-          explorerUrl: batch.explorerUrl,
-          recipients: batch.recipients,
-          orgName,
+          label, totalAmount, token: selectedToken,
+          txHash: receipt.hash, explorerUrl: batch.explorerUrl,
+          recipients: batch.recipients, orgName,
         })
 
-        // Email notifications — fire-and-forget, never blocks confirmation flow
         const emailRecipients = batch.recipients.filter((r) => r.email)
         if (emailRecipients.length > 0) {
           fetch(`${EMAIL_API_URL}/api/send-payment-emails`, {
@@ -281,11 +173,8 @@ export function Web3Provider({ children }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               recipients: emailRecipients.map((r) => ({
-                email: r.email,
-                name: r.name,
-                address: r.address,
-                amount: r.amount,
-                token: selectedToken,
+                email: r.email, name: r.name, address: r.address,
+                amount: r.amount, token: selectedToken,
               })),
               explorerBaseUrl: explorerBase,
               date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -301,7 +190,7 @@ export function Web3Provider({ children }) {
         throw err
       }
     },
-    [signer, account, provider, fetchTokenBalance, demoMode, selectedToken]
+    [signer, account, provider, fetchTokenBalance, selectedToken]
   )
 
   const disconnect = useCallback(() => {
@@ -339,7 +228,6 @@ export function Web3Provider({ children }) {
         account, provider, signer, isCorrectNetwork, tokenBalance,
         selectedToken, setSelectedToken,
         history, networkError, stats,
-        demoMode, toggleDemoMode,
         settings, updateSettings,
         connect, disconnect, switchToMorph, sendPayroll,
       }}

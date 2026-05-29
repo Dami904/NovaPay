@@ -16,8 +16,8 @@ const FRIENDLY_MESSAGES = [
     message: "You don't have enough balance for this payout.",
   },
   {
-    match: ['contract not deployed', 'demo mode'],
-    message: "This feature isn't ready yet. Try Demo mode to explore the app.",
+    match: ['contract not deployed'],
+    message: 'Contract not deployed yet. Please check the contract address.',
   },
   {
     match: ['csv parse error', 'excel parse error', 'failed to read file'],

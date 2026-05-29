@@ -6,7 +6,7 @@ function shortAddress(addr) {
 }
 
 export default function Dashboard() {
-  const { stats, account, tokenBalance, selectedToken, history, demoMode } = useWeb3()
+  const { stats, account, tokenBalance, selectedToken, history } = useWeb3()
   const navigate = useNavigate()
 
   const recentRuns = history.slice(0, 3)
@@ -18,7 +18,6 @@ export default function Dashboard() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-sub">
             {account && <span className="wallet-tag">{shortAddress(account)}</span>}
-            {demoMode && <span className="demo-inline-badge"> · Demo Mode — no real transactions</span>}
           </p>
         </div>
         <button className="btn-primary" onClick={() => navigate('/payroll/new')}>
