@@ -1189,13 +1189,52 @@ input { font-family: inherit; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Hamburger & Mobile Nav ─────────────────────────────────────── */
+.hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.mobile-nav {
+  display: flex;
+  flex-direction: column;
+  background: var(--nav-bg);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  padding: 8px 0;
+}
+
+.mobile-nav-link {
+  display: block;
+  padding: 14px 24px;
+  color: var(--text2);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mobile-nav-link:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+.mobile-nav-link.active { color: var(--primary-hover); background: rgba(99,102,241,0.12); }
+
 /* ── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .payroll-layout { grid-template-columns: 1fr; }
   .payroll-sidebar { position: static; }
   .features-grid { grid-template-columns: 1fr; }
   .navbar-links { display: none; }
+  .hamburger { display: flex; }
   .usdc-balance { display: none; }
+  .navbar-inner { gap: 8px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .history-row { flex-wrap: wrap; }
   .history-right { width: 100%; justify-content: flex-end; }

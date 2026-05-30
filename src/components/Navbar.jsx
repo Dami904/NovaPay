@@ -106,6 +106,7 @@ export default function Navbar({ theme, toggleTheme }) {
   const location = useLocation()
   const [switching, setSwitching] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   async function handleSwitchNetwork() {
     if (switching) return
@@ -150,6 +151,13 @@ export default function Navbar({ theme, toggleTheme }) {
 
           <div className="navbar-right">
             <button
+              className="hamburger"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Toggle menu"
+            >
+              {menuOpen ? '✕' : '☰'}
+            </button>
+            <button
               className="theme-toggle"
               onClick={toggleTheme}
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
@@ -190,6 +198,20 @@ export default function Navbar({ theme, toggleTheme }) {
             </div>
           </div>
         </div>
+        {menuOpen && (
+          <div className="mobile-nav">
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`mobile-nav-link ${location.pathname === link.to ? 'active' : ''}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        )}
         {networkError && (
           <button className="network-warning-bar" onClick={handleSwitchNetwork} disabled={switching}>
             ⚠ {networkError}
