@@ -2,8 +2,8 @@
 export const NOVAPAY_CONTRACT_ADDRESS = '0x10CC996453Acf71647600b958077e215228dfFb7'
 
 export const TOKENS = {
-  USDC: { symbol: 'USDC', address: '0xb646c743B4BA47ac03Bee360BB2484Fb55Db8d7e', decimals: 6 },
-  USDT: { symbol: 'USDT', address: '0x7433b41C6c5e1d58D4Da99483609520255ab661B', decimals: 6 },
+  USDC: { symbol: 'USDC', address: '0x7433b41C6c5e1d58D4Da99483609520255ab661B', decimals: 6 },
+  USDT: { symbol: 'USDT', address: '0xb646c743B4BA47ac03Bee360BB2484Fb55Db8d7e', decimals: 6 },
 }
 
 export const MORPH_TESTNET = {
